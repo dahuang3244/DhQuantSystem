@@ -1,0 +1,14 @@
+/doc
+/.zed
+/scripts
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+*.so
+config/paper.yaml
+config/live.yaml
+*.env

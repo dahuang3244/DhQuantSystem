@@ -1,0 +1,85 @@
+## 项目元数据（用于打包/发布）
+# - `name`: 包名，上传到 PyPI 或用作本地安装的标识。
+# - `version`: 当前发布/构建版本号。
+# - `description`/`readme`: 包的简短说明与 README 文件路径，用于打包元数据。
+# - `requires-python`: 指定支持的最低 Python 版本（用于安装时校验）。
+# - `authors`: 作者/维护者信息。
+[project]
+name = "dhquant"
+version = "0.0.1"
+description = "DhQuantTradeSystem Python Binding & Runtime"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "dahuang" }
+]
+
+## 运行时依赖（安装包时会自动安装）
+# - 把只在运行时需要的第三方库放到这里。当用户执行 `pip install dhquant` 时，这些依赖将被安装。
+dependencies = [
+    "pyyaml>=6.0.1",
+]
+
+## 模块与目录说明（供开发参考）
+# - `python/dhquant`: Python 层包，提供运行时 API 和 `create_engine()` 工厂。
+# - `python/dhquant/config.py`: 加载 `config/` 下的 YAML（base/dev/paper），支持 `DH_ENV` 和 `DH_` 前缀环境变量覆盖。
+# - `python/dhquant/core`: 由 C++ 编译出来的扩展所在（pybind11 绑定）。
+# - `cpp/`: C++ 源码与 `CMakeLists.txt`，scikit-build 会调用 CMake 在本目录下构建原生扩展。
+# - `config/`: 存放运行时配置文件（base/dev/paper）。
+
+
+## 可选依赖（development / build）
+# - `dev`: 开发时使用的工具，如格式检查（ruff）、类型检查（mypy）、测试（pytest）和 git 钩子（pre-commit）。
+#   通过 `pip install .[dev]` 可在开发环境中安装这些工具。
+# - `build`: 构建原生扩展所需的 Python 包和工具（用于 CI 或本地构建）。
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "pytest>=7.4.3",
+    "pre-commit>=3.5.0",
+]
+build = [
+    "scikit-build-core>=0.7.0",
+    "pybind11>=2.11.1",
+    "ninja>=1.11.1",
+    "cmake>=3.20.0",
+]
+
+## PEP 517 构建后端配置
+# - `build-system.requires`: 在构建包时需要先安装的依赖，用于构建时环境准备（例如构建 wheel 时）。
+# - `build-backend`: 指定 PEP 517 后端，这里使用 `scikit_build_core.build` 来驱动基于 CMake 的构建流程。
+[build-system]
+requires = ["scikit-build-core", "pybind11"]
+build-backend = "scikit_build_core.build"
+
+## scikit-build 配置（控制 CMake 构建行为与打包）
+# - `build-dir`: CMake 的中间/输出目录（scikit-build 会在此运行 CMake）。
+# - `cmake.source-dir`: 指向包含 `CMakeLists.txt` 的目录（本项目的 C++ 源在 `cpp/`）。
+# - `install.components`: 如果 CMake 项目使用组件化安装（component），指定要安装的组件名，比如只安装 `python_runtime` 部分。
+# - `wheel.packages`: 指定要包含进 wheel 的 Python 包路径。
+[tool.scikit-build]
+build-dir = "build/cmake"
+install.components = ["python_runtime"]
+cmake.source-dir = "cpp"
+wheel.packages = ["python/dhquant"]
+
+## 代码质量工具配置
+# - `tool.ruff`: ruff（快速 linter/formatter）的全局配置，如行长和目标 Python 版本。
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+## ruff lint 子项（更精细的 lint 规则选择）
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4"]
+ignore = []
+
+## mypy 类型检查配置
+# - `python_version`: mypy 使用的目标 Python 版本。
+# - `strict`: 开启严格模式（会启发更多类型检查错误）。
+# - `ignore_missing_imports`: 在某些 C/C++ 绑定或第三方模块缺类型信息时可避免噪声错误。
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true

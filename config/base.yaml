@@ -1,0 +1,18 @@
+app:
+  name: dhquant
+
+log:
+  level: INFO
+  format: text
+  output: stdout
+
+engine:
+  event_loop_threads: 1
+  max_queue_size: 1000
+
+gateway:
+  broker_type: backtest
+  endpoint: local
+
+risk:
+  enabled: false

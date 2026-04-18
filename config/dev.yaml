@@ -1,0 +1,8 @@
+log:
+  level: DEBUG
+
+engine:
+  max_queue_size: 2000
+
+gateway:
+  broker_type: sim

@@ -1,0 +1,10 @@
+{
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/cmake/compile_commands.json",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/build/cmake"
+  ],
+  "cmake.sourceDirectory": "/Users/dahuang/Desktop/项目/量化/DhQuantTradeSystem/cpp",
+  "cmake.configureSettings": {
+    "pybind11_DIR": "/Users/dahuang/Desktop/项目/量化/DhQuantTradeSystem/.venv/lib/python3.11/site-packages/pybind11/share/cmake/pybind11"
+  }
+}

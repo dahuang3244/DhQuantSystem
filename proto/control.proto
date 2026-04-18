@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dhquant.control.v1;
+
+enum RuntimeMode {
+  RUNTIME_MODE_UNSPECIFIED = 0;
+  RUNTIME_MODE_BACKTEST = 1;
+  RUNTIME_MODE_PAPER = 2;
+  RUNTIME_MODE_LIVE = 3;
+}
+
+message EngineStatus {
+  RuntimeMode mode = 1;
+  bool running = 2;
+}

@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package dhquant.order.v1;
+
+enum Side {
+  SIDE_UNSPECIFIED = 0;
+  SIDE_BUY = 1;
+  SIDE_SELL = 2;
+}
+
+enum Offset {
+  OFFSET_UNSPECIFIED = 0;
+  OFFSET_OPEN = 1;
+  OFFSET_CLOSE = 2;
+  OFFSET_CLOSE_TODAY = 3;
+  OFFSET_CLOSE_YESTERDAY = 4;
+}
+
+enum OrderType {
+  ORDER_TYPE_UNSPECIFIED = 0;
+  ORDER_TYPE_LIMIT = 1;
+  ORDER_TYPE_MARKET = 2;
+}
+
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PENDING_NEW = 1;
+  ORDER_STATUS_NEW = 2;
+  ORDER_STATUS_PARTIALLY_FILLED = 3;
+  ORDER_STATUS_FILLED = 4;
+  ORDER_STATUS_CANCEL_PENDING = 5;
+  ORDER_STATUS_CANCELLED = 6;
+  ORDER_STATUS_REJECTED = 7;
+}
+
+enum RejectReason {
+  REJECT_REASON_NONE = 0;
+  REJECT_REASON_INVALID_INSTRUMENT = 1;
+  REJECT_REASON_INVALID_PRICE = 2;
+  REJECT_REASON_INVALID_QUANTITY = 3;
+  REJECT_REASON_RISK_REJECTED = 4;
+  REJECT_REASON_GATEWAY_REJECTED = 5;
+  REJECT_REASON_UNKNOWN = 255;
+}
+
+message Order {
+  string session_id = 1;
+  string order_id = 2;
+  string instrument_id = 3;
+  Side side = 4;
+  Offset offset = 5;
+  OrderType order_type = 6;
+  OrderStatus status = 7;
+  RejectReason reject_reason = 8;
+  int64 quantity = 9;
+  int64 filled_quantity = 10;
+  double price = 11;
+  double average_fill_price = 12;
+  int64 ts_event = 13;
+  int64 ts_process = 14;
+}
+
+message Trade {
+  string session_id = 1;
+  string order_id = 2;
+  string trade_id = 3;
+  string instrument_id = 4;
+  Side side = 5;
+  Offset offset = 6;
+  int64 fill_quantity = 7;
+  double fill_price = 8;
+  double commission = 9;
+  int64 ts_event = 10;
+  int64 ts_process = 11;
+}

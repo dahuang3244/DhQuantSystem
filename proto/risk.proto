@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package dhquant.risk.v1;
+
+message RiskDecision {
+  string request_id = 1;
+  bool accepted = 2;
+  string reason = 3;
+  int64 ts_event = 4;
+  int64 ts_process = 5;
+}

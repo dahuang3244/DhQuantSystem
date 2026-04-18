@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dhquant.market.v1;
+
+message PriceLevel {
+  double price = 1;
+  int64 quantity = 2;
+}
+
+message Instrument {
+  string instrument_id = 1;
+  string exchange = 2;
+  string symbol = 3;
+  string instrument_type = 4;
+  int64 lot_size = 5;
+  double price_tick = 6;
+  string currency = 7;
+}
+
+message Tick {
+  string instrument_id = 1;
+  int64 ts_event = 2;
+  int64 ts_process = 3;
+  double last_price = 4;
+  int64 last_quantity = 5;
+  repeated PriceLevel bids = 6;
+  repeated PriceLevel asks = 7;
+}
+
+message Bar {
+  string instrument_id = 1;
+  int64 ts_event = 2;
+  int64 ts_process = 3;
+  double open = 4;
+  double high = 5;
+  double low = 6;
+  double close = 7;
+  int64 volume = 8;
+  double turnover = 9;
+}

@@ -1,7 +1,7 @@
 {
-  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/cmake/compile_commands.json",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/cpp/compile_commands.json",
   "clangd.arguments": [
-    "--compile-commands-dir=${workspaceFolder}/build/cmake"
+    "--compile-commands-dir=${workspaceFolder}/build/cpp"
   ],
   "cmake.sourceDirectory": "/Users/dahuang/Desktop/项目/量化/DhQuantTradeSystem/cpp",
   "cmake.configureSettings": {

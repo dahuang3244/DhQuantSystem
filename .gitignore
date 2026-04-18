@@ -15,3 +15,7 @@ dist/
 config/paper.yaml
 config/live.yaml
 *.env
+/.cache/
+/bda
+/bdc
+/compile_commands.json

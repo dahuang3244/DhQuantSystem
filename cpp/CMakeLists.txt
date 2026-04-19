@@ -14,6 +14,12 @@ include(CTest)
 add_library(dhquant_core STATIC
     src/engine.cpp
     src/core/event_loop.cpp
+    src/core/clock.cpp
+    src/core/dispatcher.cpp
+    src/core/handler.cpp
+    src/core/journal.cpp
+    src/core/replay.cpp
+    src/core/shutdown_hook.cpp
     src/domain/domain.cpp
     src/utils/Log.cpp
 )
@@ -38,11 +44,13 @@ if(BUILD_TESTING)
     add_executable(dhquant_core_tests
         test/unittest/test_result.cpp
         test/unittest/test_log.cpp
+        test/unittest/test_core.cpp
     )
     target_link_libraries(dhquant_core_tests
         PRIVATE
             dhquant_core
             GTest::gtest_main
+            GTest::gmock
     )
     include(GoogleTest)
     gtest_discover_tests(dhquant_core_tests)

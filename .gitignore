@@ -19,3 +19,4 @@ config/live.yaml
 /bda
 /bdc
 /compile_commands.json
+/dist

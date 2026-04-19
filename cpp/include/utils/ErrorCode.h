@@ -3,7 +3,7 @@
 #include <string>
 #include <string_view>
 
-namespace ErrorCode {
+namespace dhquant {
 
 enum class ErrorCode {
   kOk = 0,
@@ -37,4 +37,4 @@ inline std::string ErrorCodeToString(ErrorCode code) {
   }
 }
 
-} // namespace ErrorCode
+} // namespace dhquant

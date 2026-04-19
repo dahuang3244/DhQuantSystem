@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <utils/Log.hpp>
+#include <utils/Result.hpp>
 
 namespace {
 
@@ -20,10 +21,9 @@ public:
 
 void EmitInfoLogFromHelper() { LOGI("macro-test", "macro message"); }
 
-dhquant::Result::Result<int>
-ReturnOnError(const dhquant::Result::Result<int> &result) {
+dhquant::Result<int> ReturnOnError(const dhquant::Result<int> &result) {
   DH_RETURN_IF_ERROR(result, "macro-test", "propagating failure");
-  return dhquant::Result::Result<int>::Ok(result.value() + 1);
+  return DH_OK_V(result.value() + 1);
 }
 
 TEST(LogTest, LoggerDispatchesRecordToSink) {
@@ -36,7 +36,7 @@ TEST(LogTest, LoggerDispatchesRecordToSink) {
   ASSERT_FALSE(sink->records.empty());
   const auto &record = sink->records.back();
   EXPECT_EQ(record.level, dhquant::LogLevel::QInfo);
-  EXPECT_EQ(record.moudle, "core");
+  EXPECT_EQ(record.module, "core");
   EXPECT_EQ(record.message, "hello");
   EXPECT_EQ(record.file, "test_file.cpp");
   EXPECT_EQ(record.line, 12);
@@ -84,7 +84,7 @@ TEST(LogTest, LogMacroCapturesSourceLocation) {
   ASSERT_GT(sink->records.size(), initial_size);
   const auto &record = sink->records.back();
   EXPECT_EQ(record.level, dhquant::LogLevel::QInfo);
-  EXPECT_EQ(record.moudle, "macro-test");
+  EXPECT_EQ(record.module, "macro-test");
   EXPECT_EQ(record.message, "macro message");
   EXPECT_NE(record.file.find("test_log.cpp"), std::string::npos);
   EXPECT_EQ(record.function, "EmitInfoLogFromHelper");
@@ -96,21 +96,21 @@ TEST(LogTest, ReturnIfErrorLogsAndPropagatesFailure) {
   dhquant::Logger::instance().AddSink(sink);
   const std::size_t initial_size = sink->records.size();
 
-  auto result = ReturnOnError(dhquant::Result::Result<int>::Err(
-      {ErrorCode::ErrorCode::kStateError, "engine offline"}));
+  auto result =
+      ReturnOnError(DH_ERR(dhquant::ErrorCode::kStateError, "engine offline"));
 
   ASSERT_FALSE(result.ok());
   ASSERT_GT(sink->records.size(), initial_size);
   const auto &record = sink->records.back();
   EXPECT_EQ(record.level, dhquant::LogLevel::QError);
-  EXPECT_EQ(record.moudle, "macro-test");
+  EXPECT_EQ(record.module, "macro-test");
   EXPECT_NE(record.message.find("propagating failure"), std::string::npos);
   EXPECT_NE(record.message.find("engine offline"), std::string::npos);
   EXPECT_EQ(record.function, "ReturnOnError");
 }
 
 TEST(LogTest, ReturnIfErrorAllowsSuccessPath) {
-  auto result = ReturnOnError(dhquant::Result::Result<int>::Ok(41));
+  auto result = ReturnOnError(DH_OK_V(41));
 
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(result.value(), 42);

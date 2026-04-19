@@ -15,7 +15,7 @@ enum class LogLevel { QDebug, QInfo, QWarn, QError, QFatal };
 
 struct LogRecord {
   LogLevel level;       // 日志级别
-  std::string moudle;   // 模块
+  std::string module;   // 模块
   std::string message;  // 日志内容
   int64_t timestamp;    // 时间戳
   std::string threadId; // 线程ID
@@ -25,6 +25,22 @@ struct LogRecord {
   std::unordered_map<std::string, std::string>
       context; // 上下文信息,举例子：{"userId":"12345","orderId":"67890"}
 };
+
+static std::string level_str(LogLevel level) {
+  switch (level) {
+  case LogLevel::QDebug:
+    return "[DEBUG]";
+  case LogLevel::QInfo:
+    return "[INFO ]";
+  case LogLevel::QWarn:
+    return "[WARN ]";
+  case LogLevel::QError:
+    return "[ERROR]";
+  case LogLevel::QFatal:
+    return "[FATAL]";
+  }
+  return "[?????]";
+}
 /*
 日志接收器接口，定义了一个纯虚函数log()，用于接收日志记录并进行处理。不同的日志接收器可以实现不同的处理方式，例如将日志写入文件、发送到远程服务器等。
  */
@@ -41,10 +57,13 @@ class Logger {
 public:
   static Logger &instance();
   void AddSink(std::shared_ptr<LogSink> sink);
-  void Log(LogLevel level, const std::string &moudle,
+  void Log(LogLevel level, const std::string &module,
            const std::string &message, const std::string &file, int line,
            const std::string &function,
            const std::unordered_map<std::string, std::string> &context = {});
+
+  // 检查特定级别是否会被记录
+  bool ShouldLog(LogLevel level) const;
 
 private:
   Logger() = default;
@@ -56,8 +75,12 @@ private:
 // --- 宏定义：简化调用并自动捕获文件名、函数名和行号 ---
 
 #define DH_LOG(level, module, msg)                                             \
-  dhquant::Logger::instance().Log(level, module, msg, __FILE__, __LINE__,      \
-                                  __FUNCTION__)
+  do {                                                                         \
+    if (dhquant::Logger::instance().ShouldLog(level)) {                        \
+      dhquant::Logger::instance().Log(level, module, msg, __FILE__, __LINE__,  \
+                                      __FUNCTION__);                           \
+    }                                                                          \
+  } while (0)
 
 #define LOGD(module, msg) DH_LOG(dhquant::LogLevel::QDebug, module, msg)
 #define LOGI(module, msg) DH_LOG(dhquant::LogLevel::QInfo, module, msg)
@@ -67,12 +90,14 @@ private:
 // 针对 Result 体系的宏：如果结果错误则记录日志并返回
 #define DH_RETURN_IF_ERROR(result, module, msg)                                \
   do {                                                                         \
-    const auto &res = (result);                                                \
+    auto &&res = (result);                                                     \
     if (!res.ok()) {                                                           \
-      dhquant::Logger::instance().Log(dhquant::LogLevel::QError, module,       \
-                                      std::string(msg) + ": " +                \
-                                          res.error().message,                 \
-                                      __FILE__, __LINE__, __FUNCTION__);       \
-      return res;                                                              \
+      if (dhquant::Logger::instance().ShouldLog(dhquant::LogLevel::QError)) {  \
+        dhquant::Logger::instance().Log(dhquant::LogLevel::QError, module,     \
+                                        std::string(msg) + ": " +              \
+                                            res.error().message,               \
+                                        __FILE__, __LINE__, __FUNCTION__);     \
+      }                                                                        \
+      return std::forward<decltype(res)>(res);                                 \
     }                                                                          \
   } while (0)

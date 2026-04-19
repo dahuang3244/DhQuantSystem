@@ -59,13 +59,13 @@ class RuntimeMode(str, Enum):
     LIVE = "live"
 
 
-@dataclass(slots=True)
+@dataclass
 class PriceLevel:
     price: float = 0.0
     quantity: int = 0
 
 
-@dataclass(slots=True)
+@dataclass
 class Instrument:
     instrument_id: str = ""
     exchange: str = ""
@@ -76,7 +76,7 @@ class Instrument:
     currency: str = "CNY"
 
 
-@dataclass(slots=True)
+@dataclass
 class Tick:
     instrument_id: str = ""
     ts_event: int = 0
@@ -87,7 +87,7 @@ class Tick:
     asks: list[PriceLevel] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class Bar:
     instrument_id: str = ""
     ts_event: int = 0
@@ -100,7 +100,7 @@ class Bar:
     turnover: float = 0.0
 
 
-@dataclass(slots=True)
+@dataclass
 class Order:
     session_id: str = ""
     order_id: str = ""
@@ -118,7 +118,7 @@ class Order:
     ts_process: int = 0
 
 
-@dataclass(slots=True)
+@dataclass
 class Trade:
     session_id: str = ""
     order_id: str = ""
@@ -133,7 +133,7 @@ class Trade:
     ts_process: int = 0
 
 
-@dataclass(slots=True)
+@dataclass
 class Position:
     instrument_id: str = ""
     quantity_total: int = 0
@@ -142,7 +142,7 @@ class Position:
     market_value: float = 0.0
 
 
-@dataclass(slots=True)
+@dataclass
 class Account:
     account_id: str = ""
     currency: str = "CNY"
@@ -151,7 +151,7 @@ class Account:
     equity: float = 0.0
 
 
-@dataclass(slots=True)
+@dataclass
 class PortfolioSnapshot:
     snapshot_id: str = ""
     account_id: str = ""

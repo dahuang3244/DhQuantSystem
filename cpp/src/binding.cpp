@@ -17,6 +17,15 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
       .value("PAPER", RuntimeMode::kPaper)
       .value("LIVE", RuntimeMode::kLive);
 
+  py::enum_<EngineLifecycleState>(module, "EngineLifecycleState")
+      .value("CREATED", EngineLifecycleState::kCreated)
+      .value("STARTING", EngineLifecycleState::kStarting)
+      .value("RUNNING", EngineLifecycleState::kRunning)
+      .value("REPLAYING", EngineLifecycleState::kReplaying)
+      .value("STOPPING", EngineLifecycleState::kStopping)
+      .value("STOPPED", EngineLifecycleState::kStopped)
+      .value("FAILED", EngineLifecycleState::kFailed);
+
   py::enum_<OrderStatus>(module, "OrderStatus")
       .value("UNKNOWN", OrderStatus::kUnknown)
       .value("PENDING_NEW", OrderStatus::kPendingNew)
@@ -30,7 +39,9 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
   py::class_<EngineStatus>(module, "EngineStatus")
       .def(py::init<>())
       .def_readwrite("mode", &EngineStatus::mode)
-      .def_readwrite("running", &EngineStatus::running);
+      .def_readwrite("running", &EngineStatus::running)
+      .def_readwrite("state", &EngineStatus::state)
+      .def_readwrite("last_error", &EngineStatus::last_error);
 
   py::class_<PriceLevel>(module, "PriceLevel")
       .def(py::init<>())

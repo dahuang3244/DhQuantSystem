@@ -39,6 +39,8 @@ Result<EventEnvelope> InMemoryJournal::read(std::uint64_t offset) const {
   return Result<EventEnvelope>::Ok(events_[offset]);
 }
 
+std::size_t InMemoryJournal::size() const noexcept { return events_.size(); }
+
 Result<void> InMemoryJournal::flush() {
   // 内存版本已经在内存里，无需flash到操作系统或磁盘
   if (!is_open_) {

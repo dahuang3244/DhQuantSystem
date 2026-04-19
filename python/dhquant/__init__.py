@@ -13,23 +13,20 @@ from dhquant.domain import (
     InstrumentType,
     Offset,
     Order,
+    OrderIntent,
     OrderStatus,
     OrderType,
     PortfolioSnapshot,
     Position,
     PriceLevel,
     RejectReason,
+    RiskEvent,
     RuntimeMode,
     Side,
     Tick,
     Trade,
     is_terminal,
 )
-
-try:
-    from dhquant.core import Engine
-except ImportError:  # pragma: no cover - source-tree import before native build
-    Engine = None
 
 __all__ = [
     "Account",
@@ -41,6 +38,7 @@ __all__ = [
     "InstrumentType",
     "MappedBarReplayPreprocessor",
     "Offset",
+    "OrderIntent",
     "Order",
     "OrderStatus",
     "OrderType",
@@ -48,6 +46,7 @@ __all__ = [
     "Position",
     "PriceLevel",
     "RejectReason",
+    "RiskEvent",
     "ReplayDataLoader",
     "ReplayPreprocessor",
     "RuntimeMode",
@@ -57,3 +56,11 @@ __all__ = [
     "is_terminal",
     "load_config",
 ]
+
+
+def __getattr__(name: str):
+    if name == "Engine":
+        from dhquant.core import Engine
+
+        return Engine
+    raise AttributeError(name)

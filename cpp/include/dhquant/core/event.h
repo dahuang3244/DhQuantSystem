@@ -32,8 +32,8 @@ enum class EventSource : std::uint8_t {
 };
 
 // 当前阶段只先覆盖 Phase 1 已有的领域对象，后续再扩成控制事件或系统事件变体。
-using EventPayload =
-    std::variant<std::monostate, Tick, Bar, Order, Trade, PortfolioSnapshot>;
+using EventPayload = std::variant<std::monostate, Tick, Bar, Order, Trade,
+                                  RiskEvent, PortfolioSnapshot>;
 
 // 统一事件信封，是 Core Engine 内部真正流动的对象。
 // 你后续实现时可以把它理解成“进入 EventLoop 之前必须被标准化”的数据结构。

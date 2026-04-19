@@ -4,25 +4,22 @@ import csv
 import sys
 from pathlib import Path
 
-from dhquant import OrderStatus, RuntimeMode, is_terminal, load_config
-from dhquant.backtest import (
-    BaseCsvReplayPreprocessor,
-    MappedBarReplayPreprocessor,
-    ReplayDataLoader,
-)
-from dhquant.domain import Instrument, Order
-
 
 def _ensure_native_module_on_path() -> None:
-    build_dir = Path(__file__).resolve().parents[3] / "build" / "cpp"
-    if build_dir.exists():
-        build_str = str(build_dir)
-        if build_str not in sys.path:
-            sys.path.insert(0, build_str)
+    root = Path(__file__).resolve().parents[3]
+    for build_dir in (root / "build" / "cpp", root / "build" / "cmake", root / "build" / "manual2"):
+        if build_dir.exists():
+            build_str = str(build_dir)
+            if build_str not in sys.path:
+                sys.path.insert(0, build_str)
 
 
 def test_python_domain_defaults() -> None:
+    from dhquant import OrderStatus
+    from dhquant.domain import Instrument, Order, OrderIntent
+
     instrument = Instrument(instrument_id="SSE.600000", exchange="SSE", symbol="600000")
+    intent = OrderIntent(instrument_id=instrument.instrument_id)
     order = Order(
         session_id="paper-20260418",
         order_id="ord-0001",
@@ -30,11 +27,14 @@ def test_python_domain_defaults() -> None:
     )
 
     assert instrument.currency == "CNY"
+    assert intent.instrument_id == "SSE.600000"
     assert order.status is OrderStatus.UNKNOWN
     assert order.instrument_id == "SSE.600000"
 
 
 def test_terminal_status_helper() -> None:
+    from dhquant import OrderStatus, RuntimeMode, is_terminal
+
     assert is_terminal(OrderStatus.FILLED) is True
     assert is_terminal(OrderStatus.CANCELLED) is True
     assert is_terminal(OrderStatus.NEW) is False
@@ -42,6 +42,8 @@ def test_terminal_status_helper() -> None:
 
 
 def test_load_config_merges_base_and_env() -> None:
+    from dhquant import load_config
+
     config = load_config("dev")
 
     assert config["app"]["name"] == "dhquant"
@@ -65,6 +67,8 @@ def test_runtime_and_pipeline_import_with_built_native_module() -> None:
 
 
 def test_mapped_replay_preprocessor_generates_canonical_csv(tmp_path: Path) -> None:
+    from dhquant.backtest import MappedBarReplayPreprocessor
+
     source = tmp_path / "bars.csv"
     source.write_text(
         "symbol,time_s,o,h,l,c,vol,amt,keep\n"
@@ -103,6 +107,8 @@ def test_mapped_replay_preprocessor_generates_canonical_csv(tmp_path: Path) -> N
 
 
 def test_replay_loader_uses_preprocessor_and_cleans_temp_file(tmp_path: Path) -> None:
+    from dhquant.backtest import BaseCsvReplayPreprocessor, ReplayDataLoader
+
     source = tmp_path / "strategy_feed.csv"
     source.write_text(
         "code,ts_ms,open,high,low,close,volume,turnover\n"

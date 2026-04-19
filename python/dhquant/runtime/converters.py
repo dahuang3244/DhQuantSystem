@@ -10,6 +10,50 @@ from __future__ import annotations
 from dhquant import domain
 from dhquant.core import dhquant_cpp_binding as _cpp
 
+_SIDE_TO_DOMAIN = {
+    _cpp.Side.UNKNOWN: domain.Side.UNKNOWN,
+    _cpp.Side.BUY: domain.Side.BUY,
+    _cpp.Side.SELL: domain.Side.SELL,
+}
+_SIDE_TO_CPP = {value: key for key, value in _SIDE_TO_DOMAIN.items()}
+
+_OFFSET_TO_DOMAIN = {
+    _cpp.Offset.UNKNOWN: domain.Offset.UNKNOWN,
+    _cpp.Offset.OPEN: domain.Offset.OPEN,
+    _cpp.Offset.CLOSE: domain.Offset.CLOSE,
+    _cpp.Offset.CLOSE_TODAY: domain.Offset.CLOSE_TODAY,
+    _cpp.Offset.CLOSE_YESTERDAY: domain.Offset.CLOSE_YESTERDAY,
+}
+_OFFSET_TO_CPP = {value: key for key, value in _OFFSET_TO_DOMAIN.items()}
+
+_ORDER_TYPE_TO_DOMAIN = {
+    _cpp.OrderType.UNKNOWN: domain.OrderType.UNKNOWN,
+    _cpp.OrderType.LIMIT: domain.OrderType.LIMIT,
+    _cpp.OrderType.MARKET: domain.OrderType.MARKET,
+}
+_ORDER_TYPE_TO_CPP = {value: key for key, value in _ORDER_TYPE_TO_DOMAIN.items()}
+
+_ORDER_STATUS_TO_DOMAIN = {
+    _cpp.OrderStatus.UNKNOWN: domain.OrderStatus.UNKNOWN,
+    _cpp.OrderStatus.PENDING_NEW: domain.OrderStatus.PENDING_NEW,
+    _cpp.OrderStatus.NEW: domain.OrderStatus.NEW,
+    _cpp.OrderStatus.PARTIALLY_FILLED: domain.OrderStatus.PARTIALLY_FILLED,
+    _cpp.OrderStatus.FILLED: domain.OrderStatus.FILLED,
+    _cpp.OrderStatus.CANCEL_PENDING: domain.OrderStatus.CANCEL_PENDING,
+    _cpp.OrderStatus.CANCELLED: domain.OrderStatus.CANCELLED,
+    _cpp.OrderStatus.REJECTED: domain.OrderStatus.REJECTED,
+}
+
+_REJECT_REASON_TO_DOMAIN = {
+    _cpp.RejectReason.NONE: domain.RejectReason.NONE,
+    _cpp.RejectReason.INVALID_INSTRUMENT: domain.RejectReason.INVALID_INSTRUMENT,
+    _cpp.RejectReason.INVALID_PRICE: domain.RejectReason.INVALID_PRICE,
+    _cpp.RejectReason.INVALID_QUANTITY: domain.RejectReason.INVALID_QUANTITY,
+    _cpp.RejectReason.RISK_REJECTED: domain.RejectReason.RISK_REJECTED,
+    _cpp.RejectReason.GATEWAY_REJECTED: domain.RejectReason.GATEWAY_REJECTED,
+    _cpp.RejectReason.UNKNOWN: domain.RejectReason.UNKNOWN,
+}
+
 # ── Tick 转换 ─────────────────────────────────────────────────
 
 
@@ -58,6 +102,11 @@ def order_from_binding(raw: _cpp.Order) -> domain.Order:
         session_id=raw.session_id,
         order_id=raw.order_id,
         instrument_id=raw.instrument_id,
+        side=_SIDE_TO_DOMAIN[raw.side],
+        offset=_OFFSET_TO_DOMAIN[raw.offset],
+        order_type=_ORDER_TYPE_TO_DOMAIN[raw.order_type],
+        status=_ORDER_STATUS_TO_DOMAIN[raw.status],
+        reject_reason=_REJECT_REASON_TO_DOMAIN[raw.reject_reason],
         quantity=raw.quantity,
         filled_quantity=raw.filled_quantity,
         price=raw.price,
@@ -77,10 +126,32 @@ def order_to_binding(order: domain.Order) -> _cpp.Order:
     raw.session_id = order.session_id
     raw.order_id = order.order_id
     raw.instrument_id = order.instrument_id
+    raw.side = _SIDE_TO_CPP[order.side]
+    raw.offset = _OFFSET_TO_CPP[order.offset]
+    raw.order_type = _ORDER_TYPE_TO_CPP[order.order_type]
+    raw.status = next(
+        key for key, value in _ORDER_STATUS_TO_DOMAIN.items() if value is order.status
+    )
+    raw.reject_reason = next(
+        key for key, value in _REJECT_REASON_TO_DOMAIN.items() if value is order.reject_reason
+    )
     raw.quantity = order.quantity
+    raw.filled_quantity = order.filled_quantity
     raw.price = order.price
-    # 注意：side / offset / order_type 当前 binding 里还没导出
-    # TODO: 等 binding 补全枚举后，补上这几行
+    raw.average_fill_price = order.average_fill_price
+    raw.ts_event = order.ts_event
+    raw.ts_process = order.ts_process
+    return raw
+
+
+def order_intent_to_binding(intent: domain.OrderIntent) -> _cpp.OrderIntent:
+    raw = _cpp.OrderIntent()
+    raw.instrument_id = intent.instrument_id
+    raw.side = _SIDE_TO_CPP[intent.side]
+    raw.offset = _OFFSET_TO_CPP[intent.offset]
+    raw.order_type = _ORDER_TYPE_TO_CPP[intent.order_type]
+    raw.quantity = intent.quantity
+    raw.price = intent.price
     return raw
 
 
@@ -94,11 +165,38 @@ def trade_from_binding(raw: _cpp.Trade) -> domain.Trade:
         order_id=raw.order_id,
         trade_id=raw.trade_id,
         instrument_id=raw.instrument_id,
+        side=_SIDE_TO_DOMAIN[raw.side],
+        offset=_OFFSET_TO_DOMAIN[raw.offset],
         fill_quantity=raw.fill_quantity,
         fill_price=raw.fill_price,
         commission=raw.commission,
         ts_event=raw.ts_event,
         ts_process=raw.ts_process,
+    )
+
+
+def portfolio_snapshot_from_binding(raw: _cpp.PortfolioSnapshot) -> domain.PortfolioSnapshot:
+    return domain.PortfolioSnapshot(
+        snapshot_id=raw.snapshot_id,
+        account_id=raw.account_id,
+        account_state=domain.Account(
+            account_id=raw.account_state.account_id,
+            currency=raw.account_state.currency,
+            cash=raw.account_state.cash,
+            frozen_cash=raw.account_state.frozen_cash,
+            equity=raw.account_state.equity,
+        ),
+        positions=[
+            domain.Position(
+                instrument_id=position.instrument_id,
+                quantity_total=position.quantity_total,
+                quantity_available=position.quantity_available,
+                average_price=position.average_price,
+                market_value=position.market_value,
+            )
+            for position in raw.positions
+        ],
+        ts_snapshot=raw.ts_snapshot,
     )
 
 

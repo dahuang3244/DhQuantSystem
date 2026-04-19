@@ -174,21 +174,17 @@ TEST(BacktestEngineTest, FilledOrderIsNotMatchedAgainOnLaterBars) {
   engine.start();
   ASSERT_TRUE(engine.status().running);
 
-  dhquant::Order order;
-  order.session_id = "sess-1";
-  order.order_id = "ord-1";
-  order.instrument_id = "SSE.600000";
-  order.side = dhquant::Side::kBuy;
-  order.offset = dhquant::Offset::kOpen;
-  order.order_type = dhquant::OrderType::kMarket;
-  order.quantity = 100;
+  dhquant::OrderIntent intent;
+  intent.instrument_id = "SSE.600000";
+  intent.side = dhquant::Side::kBuy;
+  intent.offset = dhquant::Offset::kOpen;
+  intent.order_type = dhquant::OrderType::kLimit;
+  intent.quantity = 100;
+  intent.price = 10.5;
 
-  EventEnvelope env;
-  env.event_type = EventType::kOrder;
-  env.source = EventSource::kManual;
-  env.ts_event = 1713499999000;
-  env.payload = order;
-  ASSERT_TRUE(engine.submit(env).ok());
+  const auto submit_result = engine.submit_intent(intent);
+  ASSERT_TRUE(submit_result.ok()) << submit_result.error().message;
+  EXPECT_EQ(submit_result.value().status, dhquant::OrderStatus::kNew);
 
   std::vector<dhquant::Trade> trades;
   std::vector<dhquant::Order> orders;
@@ -233,21 +229,15 @@ TEST(BacktestEngineTest, SubmitAcceptsOrdersDuringReplayCallbacks) {
         if (submitted) {
           return;
         }
-        dhquant::Order order;
-        order.session_id = "sess-2";
-        order.order_id = "ord-2";
-        order.instrument_id = bar.instrument_id;
-        order.side = dhquant::Side::kBuy;
-        order.offset = dhquant::Offset::kOpen;
-        order.order_type = dhquant::OrderType::kMarket;
-        order.quantity = 50;
+        dhquant::OrderIntent intent;
+        intent.instrument_id = bar.instrument_id;
+        intent.side = dhquant::Side::kBuy;
+        intent.offset = dhquant::Offset::kOpen;
+        intent.order_type = dhquant::OrderType::kLimit;
+        intent.quantity = 100;
+        intent.price = 10.5;
 
-        EventEnvelope env;
-        env.event_type = EventType::kOrder;
-        env.source = EventSource::kManual;
-        env.ts_event = bar.ts_event;
-        env.payload = order;
-        const auto submit_result = engine.submit(env);
+        const auto submit_result = engine.submit_intent(intent);
         ASSERT_TRUE(submit_result.ok()) << submit_result.error().message;
         submitted = true;
       },
@@ -257,7 +247,7 @@ TEST(BacktestEngineTest, SubmitAcceptsOrdersDuringReplayCallbacks) {
   ASSERT_TRUE(run_result.ok()) << run_result.error().message;
   EXPECT_TRUE(submitted);
   ASSERT_EQ(trades.size(), 1U);
-  EXPECT_EQ(trades.front().fill_quantity, 50);
+  EXPECT_EQ(trades.front().fill_quantity, 100);
 }
 
 } // namespace

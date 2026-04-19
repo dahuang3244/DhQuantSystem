@@ -1,4 +1,4 @@
-from dhquant.core import dhquant_cpp_binding as _cpp
+from dhquant import domain
 from dhquant.pipeline.base import BaseNode, PipelineContext
 
 
@@ -9,15 +9,15 @@ class DummyOrderNode(BaseNode):
 
     def process(self, ctx: PipelineContext) -> None:
         if not self.triggered and ctx.current_bar.instrument_id == self.instrument_id:
-            order = _cpp.Order()
-            order.instrument_id = self.instrument_id
-            order.side = _cpp.Side.BUY
-            order.offset = _cpp.Offset.OPEN
-            order.order_type = _cpp.OrderType.MARKET
-            order.quantity = 100
-            order.order_id = f"dummy_{ctx.current_time}"
+            intent = domain.OrderIntent(
+                instrument_id=self.instrument_id,
+                side=domain.Side.BUY,
+                offset=domain.Offset.OPEN,
+                order_type=domain.OrderType.MARKET,
+                quantity=100,
+            )
 
-            ctx.submit_order(order)
+            ctx.submit_order(intent)
             self.triggered = True
             print(
                 f"[DummyOrderNode] Triggered order at {ctx.current_time} for {self.instrument_id}"

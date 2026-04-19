@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -22,6 +23,7 @@ private:
   std::vector<Order> pending_orders_;
 
   bool should_queue_order(const Order &order) const;
+  void sync_order(const Order &order);
   void match_orders(const Bar &bar);
 };
 

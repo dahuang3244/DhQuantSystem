@@ -20,6 +20,7 @@ from dataclasses import dataclass
 
 from dhquant import domain
 from dhquant.core import dhquant_cpp_binding as _cpp
+from dhquant.oms.order_service import OrderService
 from dhquant.runtime.context import StrategyContext
 from dhquant.runtime.strategy import Strategy
 
@@ -67,7 +68,8 @@ class StrategyRunner:
         )
 
         # 3. 创建 StrategyContext
-        ctx = StrategyContext(engine)
+        order_service = OrderService(engine)
+        ctx = StrategyContext(engine, order_service=order_service)
 
         try:
             # 4. 触发 on_init

@@ -37,6 +37,15 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
       .value("LIMIT", OrderType::kLimit)
       .value("MARKET", OrderType::kMarket);
 
+  py::enum_<RejectReason>(module, "RejectReason")
+      .value("NONE", RejectReason::kNone)
+      .value("INVALID_INSTRUMENT", RejectReason::kInvalidInstrument)
+      .value("INVALID_PRICE", RejectReason::kInvalidPrice)
+      .value("INVALID_QUANTITY", RejectReason::kInvalidQuantity)
+      .value("RISK_REJECTED", RejectReason::kRiskRejected)
+      .value("GATEWAY_REJECTED", RejectReason::kGatewayRejected)
+      .value("UNKNOWN", RejectReason::kUnknown);
+
   py::enum_<EngineLifecycleState>(module, "EngineLifecycleState")
       .value("CREATED", EngineLifecycleState::kCreated)
       .value("STARTING", EngineLifecycleState::kStarting)
@@ -89,6 +98,15 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
       .def_readwrite("volume", &Bar::volume)
       .def_readwrite("turnover", &Bar::turnover);
 
+  py::class_<OrderIntent>(module, "OrderIntent")
+      .def(py::init<>())
+      .def_readwrite("instrument_id", &OrderIntent::instrument_id)
+      .def_readwrite("side", &OrderIntent::side)
+      .def_readwrite("offset", &OrderIntent::offset)
+      .def_readwrite("order_type", &OrderIntent::order_type)
+      .def_readwrite("quantity", &OrderIntent::quantity)
+      .def_readwrite("price", &OrderIntent::price);
+
   py::class_<Tick>(module, "Tick")
       .def(py::init<>())
       .def_readwrite("instrument_id", &Tick::instrument_id)
@@ -108,6 +126,7 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
       .def_readwrite("offset", &Order::offset)
       .def_readwrite("order_type", &Order::order_type)
       .def_readwrite("status", &Order::status)
+      .def_readwrite("reject_reason", &Order::reject_reason)
       .def_readwrite("quantity", &Order::quantity)
       .def_readwrite("filled_quantity", &Order::filled_quantity)
       .def_readwrite("price", &Order::price)
@@ -129,12 +148,79 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
       .def_readwrite("ts_event", &Trade::ts_event)
       .def_readwrite("ts_process", &Trade::ts_process);
 
+  py::class_<RiskEvent>(module, "RiskEvent")
+      .def(py::init<>())
+      .def_readwrite("order_id", &RiskEvent::order_id)
+      .def_readwrite("instrument_id", &RiskEvent::instrument_id)
+      .def_readwrite("passed", &RiskEvent::passed)
+      .def_readwrite("reason", &RiskEvent::reason)
+      .def_readwrite("detail", &RiskEvent::detail)
+      .def_readwrite("ts_event", &RiskEvent::ts_event)
+      .def_readwrite("ts_process", &RiskEvent::ts_process);
+
+  py::class_<Position>(module, "Position")
+      .def(py::init<>())
+      .def_readwrite("instrument_id", &Position::instrument_id)
+      .def_readwrite("quantity_total", &Position::quantity_total)
+      .def_readwrite("quantity_available", &Position::quantity_available)
+      .def_readwrite("average_price", &Position::average_price)
+      .def_readwrite("market_value", &Position::market_value);
+
+  py::class_<Account>(module, "Account")
+      .def(py::init<>())
+      .def_readwrite("account_id", &Account::account_id)
+      .def_readwrite("currency", &Account::currency)
+      .def_readwrite("cash", &Account::cash)
+      .def_readwrite("frozen_cash", &Account::frozen_cash)
+      .def_readwrite("equity", &Account::equity);
+
+  py::class_<PortfolioSnapshot>(module, "PortfolioSnapshot")
+      .def(py::init<>())
+      .def_readwrite("snapshot_id", &PortfolioSnapshot::snapshot_id)
+      .def_readwrite("account_id", &PortfolioSnapshot::account_id)
+      .def_readwrite("account_state", &PortfolioSnapshot::account_state)
+      .def_readwrite("positions", &PortfolioSnapshot::positions)
+      .def_readwrite("ts_snapshot", &PortfolioSnapshot::ts_snapshot);
+
   py::class_<Engine>(module, "Engine")
       .def(py::init<RuntimeMode>(), py::arg("mode") = RuntimeMode::kBacktest)
       .def("start", &Engine::start)
       .def("stop", &Engine::stop)
       .def("status", &Engine::status)
       .def("name", &Engine::name)
+      .def(
+          "submit_intent",
+          [](Engine &self, const OrderIntent &intent) {
+            auto result = self.submit_intent(intent);
+            if (!result.ok()) {
+              throw std::runtime_error(result.error().message);
+            }
+            return result.value();
+          },
+          py::arg("intent"))
+      .def(
+          "cancel_order",
+          [](Engine &self, const std::string &order_id) {
+            auto result = self.cancel_order(order_id);
+            if (!result.ok()) {
+              throw std::runtime_error(result.error().message);
+            }
+            return result.value();
+          },
+          py::arg("order_id"))
+      .def("get_order", &Engine::get_order, py::arg("order_id"))
+      .def("get_portfolio_snapshot", &Engine::get_portfolio_snapshot)
+      .def(
+          "read_journal",
+          [](Engine &self, std::uint64_t offset) {
+            auto result = self.read_journal(offset);
+            if (!result.ok()) {
+              throw std::runtime_error(result.error().message);
+            }
+            return result.value();
+          },
+          py::arg("offset"))
+      .def("journal_size", &Engine::journal_size)
       .def(
           "load_replay",
           [](Engine &self, const std::string &csv_path) {
@@ -231,6 +317,10 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
               self.payload = obj.cast<Order>();
             else if (py::isinstance<Trade>(obj))
               self.payload = obj.cast<Trade>();
+            else if (py::isinstance<RiskEvent>(obj))
+              self.payload = obj.cast<RiskEvent>();
+            else if (py::isinstance<PortfolioSnapshot>(obj))
+              self.payload = obj.cast<PortfolioSnapshot>();
           });
 
   module.def("is_terminal", &is_terminal, py::arg("status"));

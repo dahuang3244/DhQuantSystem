@@ -13,6 +13,7 @@ from typing import Any
 
 from dhquant import domain
 from dhquant.core import dhquant_cpp_binding as _cpp
+from dhquant.oms.order_service import OrderService
 
 logger = logging.getLogger(__name__)
 
@@ -25,31 +26,21 @@ class StrategyContext:
     - engine: 原生 C++ Engine 对象（由 runner 创建并传入）
     """
 
-    def __init__(self, engine: _cpp.Engine) -> None:
+    def __init__(self, engine: _cpp.Engine, order_service: OrderService | None = None) -> None:
         self._engine = engine
+        self._order_service = order_service or OrderService(engine)
 
     # ── 动作接口 ──────────────────────────────────────────────
 
-    def submit_order(self, order: domain.Order) -> None:
-        """
-        提交订单。
+    def submit_order(self, intent: domain.OrderIntent) -> domain.Order:
+        """提交下单意图，经由统一的 OrderService 进入 C++ OMS 主链。"""
+        logger.info("submit_order called", extra={"instrument_id": intent.instrument_id})
+        return self._order_service.submit(intent)
 
-        第一版实现：打日志占位，等 converters 和 Engine.submit 打通后
-        再换成真实的转换 + 提交调用。
-        """
-        logger.info(
-            "submit_order called",
-            extra={"order_id": order.order_id, "instrument_id": order.instrument_id},
-        )
-        # TODO Phase 3 后续：
-        # from dhquant.runtime import converters
-        # envelope = converters.order_to_event_envelope(order)
-        # self._engine.submit(envelope)
-
-    def cancel_order(self, order_id: str) -> None:
+    def cancel_order(self, order_id: str) -> domain.Order:
         """撤销订单。"""
         logger.info("cancel_order called", extra={"order_id": order_id})
-        # TODO Phase 3 后续：构造 cancel 事件并提交
+        return self._order_service.cancel(order_id)
 
     # ── 查询接口 ──────────────────────────────────────────────
 
@@ -60,6 +51,10 @@ class StrategyContext:
         返回 binding 侧的 EngineStatus，包含 mode / running / state / last_error。
         """
         return self._engine.status()
+
+    def query_portfolio(self) -> domain.PortfolioSnapshot:
+        """查询当前账本快照。"""
+        return self._order_service.get_portfolio_snapshot()
 
     # ── 工具接口 ──────────────────────────────────────────────
 

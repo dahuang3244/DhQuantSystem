@@ -101,6 +101,16 @@ class Bar:
 
 
 @dataclass
+class OrderIntent:
+    instrument_id: str = ""
+    side: Side = Side.UNKNOWN
+    offset: Offset = Offset.UNKNOWN
+    order_type: OrderType = OrderType.UNKNOWN
+    quantity: int = 0
+    price: float = 0.0
+
+
+@dataclass
 class Order:
     session_id: str = ""
     order_id: str = ""
@@ -129,6 +139,17 @@ class Trade:
     fill_quantity: int = 0
     fill_price: float = 0.0
     commission: float = 0.0
+    ts_event: int = 0
+    ts_process: int = 0
+
+
+@dataclass
+class RiskEvent:
+    order_id: str = ""
+    instrument_id: str = ""
+    passed: bool = False
+    reason: RejectReason = RejectReason.NONE
+    detail: str = ""
     ts_event: int = 0
     ts_process: int = 0
 

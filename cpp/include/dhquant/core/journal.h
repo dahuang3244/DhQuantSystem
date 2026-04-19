@@ -22,6 +22,7 @@ public:
 
   // 按 offset 读取，保证 replay 可以顺序恢复。
   virtual Result<EventEnvelope> read(std::uint64_t offset) const = 0;
+  [[nodiscard]] virtual std::size_t size() const noexcept = 0;
 
   virtual Result<void> flush() = 0;
   virtual Result<void> close() = 0;
@@ -33,6 +34,7 @@ public:
   Result<void> open(const JournalConfig &config) override;
   Result<std::uint64_t> append(const EventEnvelope &event) override;
   Result<EventEnvelope> read(std::uint64_t offset) const override;
+  [[nodiscard]] std::size_t size() const noexcept override;
   Result<void> flush() override;
   Result<void> close() override;
 

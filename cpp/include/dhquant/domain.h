@@ -99,6 +99,15 @@ struct Bar {
   double turnover{0.0};
 };
 
+struct OrderIntent {
+  std::string instrument_id;
+  Side side{Side::kUnknown};
+  Offset offset{Offset::kUnknown};
+  OrderType order_type{OrderType::kUnknown};
+  std::int64_t quantity{0};
+  double price{0.0};
+};
+
 struct Order {
   std::string session_id;
   std::string order_id;
@@ -126,6 +135,16 @@ struct Trade {
   std::int64_t fill_quantity{0};
   double fill_price{0.0};
   double commission{0.0};
+  std::int64_t ts_event{0};
+  std::int64_t ts_process{0};
+};
+
+struct RiskEvent {
+  std::string order_id;
+  std::string instrument_id;
+  bool passed{false};
+  RejectReason reason{RejectReason::kNone};
+  std::string detail;
   std::int64_t ts_event{0};
   std::int64_t ts_process{0};
 };

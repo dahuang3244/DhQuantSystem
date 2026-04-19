@@ -30,6 +30,10 @@ add_library(dhquant_core STATIC
     src/core/python_bridge_handler.cpp
     src/core/backtest_matcher.cpp
     src/domain/domain.cpp
+    src/oms/order_state_machine.cpp
+    src/oms/order_manager.cpp
+    src/portfolio/ledger.cpp
+    src/risk/risk_gate.cpp
     src/utils/Log.cpp
 )
 
@@ -54,6 +58,7 @@ if(BUILD_TESTING)
         test/unittest/test_result.cpp
         test/unittest/test_log.cpp
         test/unittest/test_core.cpp
+        test/unittest/test_phase5.cpp
     )
     target_link_libraries(dhquant_core_tests
         PRIVATE

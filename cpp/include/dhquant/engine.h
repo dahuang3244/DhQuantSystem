@@ -2,14 +2,19 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "dhquant/core/config.h"
 #include "dhquant/core/event.h"
 #include "dhquant/core/runtime_context.h"
 #include "dhquant/domain.h"
+#include "dhquant/oms/order_manager.h"
+#include "dhquant/portfolio/ledger.h"
+#include "dhquant/risk/risk_gate.h"
 #include "utils/Result.hpp"
 
 namespace dhquant {
@@ -46,6 +51,16 @@ public:
   // submit 是统一事件入口。外部对象进入内核前，应先转成 core::EventEnvelope。
   dhquant::Result<std::uint64_t> submit(core::EventEnvelope event);
 
+  // Phase 5: OMS / Ledger / Risk 主链入口
+  dhquant::Result<Order> submit_intent(const OrderIntent &intent);
+  dhquant::Result<Order> cancel_order(std::string_view order_id);
+  [[nodiscard]] std::optional<Order>
+  get_order(std::string_view order_id) const noexcept;
+  [[nodiscard]] PortfolioSnapshot get_portfolio_snapshot() const;
+  [[nodiscard]] dhquant::Result<core::EventEnvelope>
+  read_journal(std::uint64_t offset) const;
+  [[nodiscard]] std::size_t journal_size() const noexcept;
+
   // Phase 4: 回测接口
   dhquant::Result<void> load_replay(const std::string &csv_path);
   dhquant::Result<void>
@@ -67,6 +82,11 @@ private:
   core::EngineConfig config_{};
   core::RuntimeContext runtime_{};
   std::vector<Bar> replay_bars_{};
+  risk::RiskGate risk_gate_{};
+  oms::OrderManager order_manager_{};
+  portfolio::Ledger ledger_{};
+  std::unordered_map<std::string, Instrument> instruments_{};
+  std::uint64_t next_order_id_{1};
 };
 
 } // namespace dhquant

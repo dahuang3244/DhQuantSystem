@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(POLICY CMP0148)
+    cmake_policy(SET CMP0148 NEW)
+endif()
+
+set(PYBIND11_FINDPYTHON ON)
+find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 REQUIRED)
 find_package(GTest REQUIRED)
 include(CTest)
@@ -20,6 +26,9 @@ add_library(dhquant_core STATIC
     src/core/journal.cpp
     src/core/replay.cpp
     src/core/shutdown_hook.cpp
+    src/core/backtest_replay_reader.cpp
+    src/core/python_bridge_handler.cpp
+    src/core/backtest_matcher.cpp
     src/domain/domain.cpp
     src/utils/Log.cpp
 )

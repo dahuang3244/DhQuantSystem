@@ -86,3 +86,4 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 pythonpath = ["python"]
+testpaths = ["python/dhquant/tests"]

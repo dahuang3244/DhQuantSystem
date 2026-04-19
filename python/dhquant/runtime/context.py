@@ -11,9 +11,8 @@ import logging
 import time
 from typing import Any
 
-import dhquant_cpp_binding as _cpp
-
 from dhquant import domain
+from dhquant.core import dhquant_cpp_binding as _cpp
 
 logger = logging.getLogger(__name__)
 

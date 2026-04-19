@@ -7,9 +7,8 @@
 """
 from __future__ import annotations
 
-import dhquant_cpp_binding as _cpp
-
 from dhquant import domain
+from dhquant.core import dhquant_cpp_binding as _cpp
 
 # ── Tick 转换 ─────────────────────────────────────────────────
 

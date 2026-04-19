@@ -1,3 +1,10 @@
+from dhquant.backtest import (
+    BaseCsvReplayPreprocessor,
+    IdentityReplayPreprocessor,
+    MappedBarReplayPreprocessor,
+    ReplayDataLoader,
+    ReplayPreprocessor,
+)
 from dhquant.config import load_config
 from dhquant.domain import (
     Account,
@@ -27,9 +34,12 @@ except ImportError:  # pragma: no cover - source-tree import before native build
 __all__ = [
     "Account",
     "Bar",
+    "BaseCsvReplayPreprocessor",
     "Engine",
+    "IdentityReplayPreprocessor",
     "Instrument",
     "InstrumentType",
+    "MappedBarReplayPreprocessor",
     "Offset",
     "Order",
     "OrderStatus",
@@ -38,6 +48,8 @@ __all__ = [
     "Position",
     "PriceLevel",
     "RejectReason",
+    "ReplayDataLoader",
+    "ReplayPreprocessor",
     "RuntimeMode",
     "Side",
     "Tick",

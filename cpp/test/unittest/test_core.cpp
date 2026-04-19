@@ -1,11 +1,16 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <filesystem>
+#include <fstream>
+
+#include "dhquant/core/backtest_replay_reader.h"
 #include "dhquant/core/clock.h"
 #include "dhquant/core/dispatcher.h"
 #include "dhquant/core/event_loop.h"
 #include "dhquant/core/handler.h"
 #include "dhquant/core/journal.h"
+#include "dhquant/engine.h"
 
 using namespace dhquant::core;
 using testing::_;
@@ -13,6 +18,8 @@ using testing::Invoke;
 using testing::Return;
 
 namespace {
+
+namespace fs = std::filesystem;
 
 // Mock Handler 用于验证事件是否正确分发
 class MockHandler : public IEventHandler {
@@ -47,6 +54,14 @@ protected:
   std::shared_ptr<Dispatcher> dispatcher;
   std::unique_ptr<EventLoop> event_loop;
 };
+
+fs::path write_temp_csv(const std::string &name, const std::string &content) {
+  const auto path = fs::temp_directory_path() / name;
+  std::ofstream out(path);
+  out << content;
+  out.close();
+  return path;
+}
 
 TEST_F(CoreEngineTest, BasicEventFlow) {
   // 1. 注册一个 Mock Handler 到 MarketTick 事件
@@ -105,7 +120,7 @@ TEST_F(CoreEngineTest, ClockIntegration) {
   event.event_type = EventType::kSystem;
 
   // 推进时钟
-  clock->advance_to(2000000);
+  (void)clock->advance_to(2000000);
 
   (void)event_loop->post(event);
 
@@ -117,7 +132,8 @@ TEST_F(CoreEngineTest, ClockIntegration) {
 
 TEST_F(CoreEngineTest, DrainProcessesAllEvents) {
   auto mock_handler = std::make_shared<MockHandler>();
-  dispatcher->register_handler(EventType::kOrder, mock_handler);
+  ASSERT_TRUE(
+      dispatcher->register_handler(EventType::kOrder, mock_handler).ok());
 
   // 投递多个事件
   (void)event_loop->post({0, EventType::kOrder});
@@ -131,6 +147,117 @@ TEST_F(CoreEngineTest, DrainProcessesAllEvents) {
 
   // 执行 Drain
   ASSERT_TRUE(event_loop->drain().ok());
+}
+
+TEST(BacktestReplayReaderTest, LoadRejectsMalformedCsvRows) {
+  const auto csv_path = write_temp_csv(
+      "dhquant_backtest_reader_invalid.csv",
+      "ts_event,instrument_id,open,high,low,close,volume,turnover\n"
+      "1713500000000,SSE.600000,10.0,10.5,9.9,10.2,1000\n");
+
+  BacktestReplayReader reader(csv_path.string());
+  const auto result = reader.load();
+
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ(result.error().code, dhquant::ErrorCode::kInvalidConfig);
+}
+
+TEST(BacktestEngineTest, FilledOrderIsNotMatchedAgainOnLaterBars) {
+  const auto csv_path = write_temp_csv(
+      "dhquant_backtest_engine_replay.csv",
+      "ts_event,instrument_id,open,high,low,close,volume,turnover\n"
+      "1713500000000,SSE.600000,10.0,10.5,9.9,10.2,1000,10200.0\n"
+      "1713500060000,SSE.600000,10.2,10.8,10.1,10.7,1200,12840.0\n");
+
+  dhquant::Engine engine(dhquant::RuntimeMode::kBacktest);
+  ASSERT_TRUE(engine.load_replay(csv_path.string()).ok());
+  engine.start();
+  ASSERT_TRUE(engine.status().running);
+
+  dhquant::Order order;
+  order.session_id = "sess-1";
+  order.order_id = "ord-1";
+  order.instrument_id = "SSE.600000";
+  order.side = dhquant::Side::kBuy;
+  order.offset = dhquant::Offset::kOpen;
+  order.order_type = dhquant::OrderType::kMarket;
+  order.quantity = 100;
+
+  EventEnvelope env;
+  env.event_type = EventType::kOrder;
+  env.source = EventSource::kManual;
+  env.ts_event = 1713499999000;
+  env.payload = order;
+  ASSERT_TRUE(engine.submit(env).ok());
+
+  std::vector<dhquant::Trade> trades;
+  std::vector<dhquant::Order> orders;
+  std::vector<dhquant::Bar> bars;
+  const auto run_result = engine.run_backtest(
+      [&](const dhquant::Bar &bar) { bars.push_back(bar); },
+      [&](const dhquant::Order &updated) { orders.push_back(updated); },
+      [&](const dhquant::Trade &trade) { trades.push_back(trade); });
+
+  ASSERT_TRUE(run_result.ok()) << run_result.error().message;
+  EXPECT_EQ(bars.size(), 2U);
+  ASSERT_EQ(trades.size(), 1U);
+  EXPECT_EQ(trades.front().fill_price, 10.2);
+  EXPECT_EQ(trades.front().fill_quantity, 100);
+
+  int filled_updates = 0;
+  for (const auto &updated : orders) {
+    if (updated.status == dhquant::OrderStatus::kFilled) {
+      ++filled_updates;
+    }
+  }
+  EXPECT_EQ(filled_updates, 1);
+
+  engine.stop();
+  EXPECT_EQ(engine.status().state, dhquant::EngineLifecycleState::kStopped);
+}
+
+TEST(BacktestEngineTest, SubmitAcceptsOrdersDuringReplayCallbacks) {
+  const auto csv_path = write_temp_csv(
+      "dhquant_backtest_engine_callback_submit.csv",
+      "ts_event,instrument_id,open,high,low,close,volume,turnover\n"
+      "1713500000000,SSE.600000,10.0,10.5,9.9,10.2,1000,10200.0\n"
+      "1713500060000,SSE.600000,10.2,10.8,10.1,10.7,1200,12840.0\n");
+
+  dhquant::Engine engine(dhquant::RuntimeMode::kBacktest);
+  ASSERT_TRUE(engine.load_replay(csv_path.string()).ok());
+
+  bool submitted = false;
+  std::vector<dhquant::Trade> trades;
+  const auto run_result = engine.run_backtest(
+      [&](const dhquant::Bar &bar) {
+        if (submitted) {
+          return;
+        }
+        dhquant::Order order;
+        order.session_id = "sess-2";
+        order.order_id = "ord-2";
+        order.instrument_id = bar.instrument_id;
+        order.side = dhquant::Side::kBuy;
+        order.offset = dhquant::Offset::kOpen;
+        order.order_type = dhquant::OrderType::kMarket;
+        order.quantity = 50;
+
+        EventEnvelope env;
+        env.event_type = EventType::kOrder;
+        env.source = EventSource::kManual;
+        env.ts_event = bar.ts_event;
+        env.payload = order;
+        const auto submit_result = engine.submit(env);
+        ASSERT_TRUE(submit_result.ok()) << submit_result.error().message;
+        submitted = true;
+      },
+      [](const dhquant::Order &) {},
+      [&](const dhquant::Trade &trade) { trades.push_back(trade); });
+
+  ASSERT_TRUE(run_result.ok()) << run_result.error().message;
+  EXPECT_TRUE(submitted);
+  ASSERT_EQ(trades.size(), 1U);
+  EXPECT_EQ(trades.front().fill_quantity, 50);
 }
 
 } // namespace

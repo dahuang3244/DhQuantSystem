@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "dhquant/core/config.h"
 #include "dhquant/core/event.h"
@@ -44,6 +46,13 @@ public:
   // submit 是统一事件入口。外部对象进入内核前，应先转成 core::EventEnvelope。
   dhquant::Result<std::uint64_t> submit(core::EventEnvelope event);
 
+  // Phase 4: 回测接口
+  dhquant::Result<void> load_replay(const std::string &csv_path);
+  dhquant::Result<void>
+  run_backtest(std::function<void(const Bar &)> on_bar,
+               std::function<void(const Order &)> on_order,
+               std::function<void(const Trade &)> on_trade);
+
   // 这两个接口先作为回放能力占位，后续由 ReplayRunner 真正承接。
   dhquant::Result<void> replay_from_offset(std::uint64_t offset);
   dhquant::Result<void> replay_between(std::int64_t begin_ts,
@@ -51,11 +60,13 @@ public:
 
   [[nodiscard]] EngineStatus status() const noexcept;
   [[nodiscard]] std::string_view name() const noexcept;
+  [[nodiscard]] std::int64_t clock_now() const noexcept;
 
 private:
   EngineStatus status_{};
   core::EngineConfig config_{};
   core::RuntimeContext runtime_{};
+  std::vector<Bar> replay_bars_{};
 };
 
 } // namespace dhquant

@@ -20,3 +20,4 @@ config/live.yaml
 /bdc
 /compile_commands.json
 /dist
+/test_data.csv

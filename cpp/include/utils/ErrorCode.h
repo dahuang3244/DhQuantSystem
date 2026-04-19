@@ -13,7 +13,9 @@ enum class ErrorCode {
   kTimeout = 4,
   kStateError = 5,
   kInternalError = 6,
-  kUnknownError = 7
+  kUnknownError = 7,
+  kInvalidConfig = 8,
+  kPythonError = 9
 };
 
 inline std::string ErrorCodeToString(ErrorCode code) {
@@ -32,6 +34,10 @@ inline std::string ErrorCodeToString(ErrorCode code) {
     return "STATE_ERROR";
   case ErrorCode::kInternalError:
     return "INTERNAL_ERROR";
+  case ErrorCode::kInvalidConfig:
+    return "INVALID_CONFIG";
+  case ErrorCode::kPythonError:
+    return "PYTHON_ERROR";
   default:
     return "UNKNOWN_ERROR";
   }

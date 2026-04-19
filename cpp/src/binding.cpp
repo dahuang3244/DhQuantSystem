@@ -1,5 +1,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
 
 #include "dhquant/domain.h"
 #include "dhquant/engine.h"
@@ -16,6 +19,23 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
       .value("BACKTEST", RuntimeMode::kBacktest)
       .value("PAPER", RuntimeMode::kPaper)
       .value("LIVE", RuntimeMode::kLive);
+
+  py::enum_<Side>(module, "Side")
+      .value("UNKNOWN", Side::kUnknown)
+      .value("BUY", Side::kBuy)
+      .value("SELL", Side::kSell);
+
+  py::enum_<Offset>(module, "Offset")
+      .value("UNKNOWN", Offset::kUnknown)
+      .value("OPEN", Offset::kOpen)
+      .value("CLOSE", Offset::kClose)
+      .value("CLOSE_TODAY", Offset::kCloseToday)
+      .value("CLOSE_YESTERDAY", Offset::kCloseYesterday);
+
+  py::enum_<OrderType>(module, "OrderType")
+      .value("UNKNOWN", OrderType::kUnknown)
+      .value("LIMIT", OrderType::kLimit)
+      .value("MARKET", OrderType::kMarket);
 
   py::enum_<EngineLifecycleState>(module, "EngineLifecycleState")
       .value("CREATED", EngineLifecycleState::kCreated)
@@ -57,11 +77,37 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
       .def_readwrite("price_tick", &Instrument::price_tick)
       .def_readwrite("currency", &Instrument::currency);
 
+  py::class_<Bar>(module, "Bar")
+      .def(py::init<>())
+      .def_readwrite("instrument_id", &Bar::instrument_id)
+      .def_readwrite("ts_event", &Bar::ts_event)
+      .def_readwrite("ts_process", &Bar::ts_process)
+      .def_readwrite("open", &Bar::open)
+      .def_readwrite("high", &Bar::high)
+      .def_readwrite("low", &Bar::low)
+      .def_readwrite("close", &Bar::close)
+      .def_readwrite("volume", &Bar::volume)
+      .def_readwrite("turnover", &Bar::turnover);
+
+  py::class_<Tick>(module, "Tick")
+      .def(py::init<>())
+      .def_readwrite("instrument_id", &Tick::instrument_id)
+      .def_readwrite("ts_event", &Tick::ts_event)
+      .def_readwrite("ts_process", &Tick::ts_process)
+      .def_readwrite("last_price", &Tick::last_price)
+      .def_readwrite("last_quantity", &Tick::last_quantity)
+      .def_readwrite("bids", &Tick::bids)
+      .def_readwrite("asks", &Tick::asks);
+
   py::class_<Order>(module, "Order")
       .def(py::init<>())
       .def_readwrite("session_id", &Order::session_id)
       .def_readwrite("order_id", &Order::order_id)
       .def_readwrite("instrument_id", &Order::instrument_id)
+      .def_readwrite("side", &Order::side)
+      .def_readwrite("offset", &Order::offset)
+      .def_readwrite("order_type", &Order::order_type)
+      .def_readwrite("status", &Order::status)
       .def_readwrite("quantity", &Order::quantity)
       .def_readwrite("filled_quantity", &Order::filled_quantity)
       .def_readwrite("price", &Order::price)
@@ -75,6 +121,8 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
       .def_readwrite("order_id", &Trade::order_id)
       .def_readwrite("trade_id", &Trade::trade_id)
       .def_readwrite("instrument_id", &Trade::instrument_id)
+      .def_readwrite("side", &Trade::side)
+      .def_readwrite("offset", &Trade::offset)
       .def_readwrite("fill_quantity", &Trade::fill_quantity)
       .def_readwrite("fill_price", &Trade::fill_price)
       .def_readwrite("commission", &Trade::commission)
@@ -86,7 +134,104 @@ PYBIND11_MODULE(dhquant_cpp_binding, module) {
       .def("start", &Engine::start)
       .def("stop", &Engine::stop)
       .def("status", &Engine::status)
-      .def("name", &Engine::name);
+      .def("name", &Engine::name)
+      .def(
+          "load_replay",
+          [](Engine &self, const std::string &csv_path) {
+            auto result = self.load_replay(csv_path);
+            if (!result.ok()) {
+              throw std::runtime_error(result.error().message);
+            }
+          },
+          py::arg("csv_path"))
+      .def(
+          "run_backtest",
+          [](Engine &self, py::function py_on_bar, py::object py_on_order,
+             py::object py_on_trade) {
+            auto on_bar = [fn = std::move(py_on_bar)](const Bar &bar) {
+              fn(bar);
+            };
+            std::function<void(const Order &)> on_order;
+            if (!py_on_order.is_none()) {
+              auto order_fn = py_on_order.cast<py::function>();
+              on_order = [fn = std::move(order_fn)](const Order &order) {
+                fn(order);
+              };
+            }
+
+            std::function<void(const Trade &)> on_trade;
+            if (!py_on_trade.is_none()) {
+              auto trade_fn = py_on_trade.cast<py::function>();
+              on_trade = [fn = std::move(trade_fn)](const Trade &trade) {
+                fn(trade);
+              };
+            }
+
+            auto result = self.run_backtest(
+                std::move(on_bar), std::move(on_order), std::move(on_trade));
+            if (!result.ok()) {
+              throw std::runtime_error(result.error().message);
+            }
+          },
+          py::arg("py_on_bar"), py::arg("py_on_order") = py::none(),
+          py::arg("py_on_trade") = py::none())
+      .def("clock_now", &Engine::clock_now)
+      .def("submit", [](Engine &self, core::EventEnvelope &env) {
+        auto result = self.submit(std::move(env));
+        if (!result.ok()) {
+          throw std::runtime_error(result.error().message);
+        }
+        return result.value();
+      });
+
+  py::enum_<core::EventType>(module, "EventType")
+      .value("UNKNOWN", core::EventType::kUnknown)
+      .value("SYSTEM", core::EventType::kSystem)
+      .value("CONTROL", core::EventType::kControl)
+      .value("MARKET_TICK", core::EventType::kMarketTick)
+      .value("MARKET_BAR", core::EventType::kMarketBar)
+      .value("ORDER", core::EventType::kOrder)
+      .value("TRADE", core::EventType::kTrade)
+      .value("RISK", core::EventType::kRisk)
+      .value("PORTFOLIO", core::EventType::kPortfolio);
+
+  py::enum_<core::EventSource>(module, "EventSource")
+      .value("UNKNOWN", core::EventSource::kUnknown)
+      .value("LIVE", core::EventSource::kLive)
+      .value("REPLAY", core::EventSource::kReplay)
+      .value("TEST", core::EventSource::kTest)
+      .value("MANUAL", core::EventSource::kManual);
+
+  py::class_<core::EventEnvelope>(module, "EventEnvelope")
+      .def(py::init<>())
+      .def_readwrite("event_type", &core::EventEnvelope::event_type)
+      .def_readwrite("source", &core::EventEnvelope::source)
+      .def_readwrite("ts_event", &core::EventEnvelope::ts_event)
+      .def_property(
+          "payload",
+          [](const core::EventEnvelope &self) -> py::object {
+            return std::visit(
+                [](auto &&arg) -> py::object {
+                  using T = std::decay_t<decltype(arg)>;
+                  if constexpr (std::is_same_v<T, std::monostate>)
+                    return py::none();
+                  else
+                    return py::cast(arg);
+                },
+                self.payload);
+          },
+          [](core::EventEnvelope &self, py::object obj) {
+            if (obj.is_none())
+              self.payload = std::monostate{};
+            else if (py::isinstance<Tick>(obj))
+              self.payload = obj.cast<Tick>();
+            else if (py::isinstance<Bar>(obj))
+              self.payload = obj.cast<Bar>();
+            else if (py::isinstance<Order>(obj))
+              self.payload = obj.cast<Order>();
+            else if (py::isinstance<Trade>(obj))
+              self.payload = obj.cast<Trade>();
+          });
 
   module.def("is_terminal", &is_terminal, py::arg("status"));
 }

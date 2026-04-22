@@ -20,6 +20,9 @@ dependencies = [
     "pyyaml>=6.0.1",
 ]
 
+[project.scripts]
+dhquant-gui = "dhquant.gui.app:main"
+
 ## 模块与目录说明（供开发参考）
 # - `python/dhquant`: Python 层包，提供运行时 API 和 `create_engine()` 工厂。
 # - `python/dhquant/config.py`: 加载 `config/` 下的 YAML（base/dev/paper），支持 `DH_ENV` 和 `DH_` 前缀环境变量覆盖。
@@ -38,6 +41,9 @@ dev = [
     "mypy>=1.7.0",
     "pytest>=7.4.3",
     "pre-commit>=3.5.0",
+]
+gui = [
+    "PySide6>=6.8.0",
 ]
 build = [
     "scikit-build-core>=0.7.0",
